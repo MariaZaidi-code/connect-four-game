@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Connect Four</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #2980b9 0%, #6dd5fa 100%);
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+        }
+        .container {
+            background: #fff;
+            border-radius: 18px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.2);
+            padding: 32px 40px 32px 40px;
+            margin-top: 40px;
+            margin-bottom: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 400px;
+        }
+        h1 {
+            margin-bottom: 18px;
+            color: #2980b9;
+            letter-spacing: 2px;
+        }
+        #playerName {
+            padding: 10px 16px;
+            border-radius: 8px;
+            border: 1px solid #b2bec3;
+            font-size: 1rem;
+            margin-right: 10px;
+            outline: none;
+            transition: border 0.2s;
+        }
+        #playerName:focus {
+            border: 1.5px solid #2980b9;
+        }
+        button {
+            padding: 10px 22px;
+            border-radius: 8px;
+            border: none;
+            background: #2980b9;
+            color: #fff;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.2s, box-shadow 0.2s;
+            box-shadow: 0 2px 8px rgba(41,128,185,0.08);
+        }
+        button:hover {
+            background: #1a5a8a;
+        }
+        #status {
+            margin: 16px 0 0 0;
+            font-size: 1.1rem;
+            color: #636e72;
+        }
+        #game {
+            display: grid;
+            grid-template-columns: repeat(7, 60px);
+            gap: 7px;
+            margin-top: 28px;
+            margin-bottom: 30px;
+            background: #1565c0;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(21,101,192,0.10);
+            padding: 12px 8px 8px 8px;
+        }
+        .cell {
+            width: 60px;
+            height: 60px;
+            background: #2196F3;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(33,150,243,0.10);
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .cell:hover {
+            transform: scale(1.08);
+            box-shadow: 0 4px 16px rgba(33,150,243,0.18);
+        }
+        .disc {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #e0e0e0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+        }
+        .player {
+            background: linear-gradient(135deg, #e74c3c 60%, #c0392b 100%);
+            box-shadow: 0 2px 8px rgba(231,76,60,0.18);
+        }
+        .ai {
+            background: linear-gradient(135deg, #f9d423 60%, #ff4e50 100%);
+            box-shadow: 0 2px 8px rgba(249,212,35,0.18);
+        }
+        h2 {
+            color: #1565c0;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        #historyTable {
+            border-collapse: collapse;
+            width: 100%;
+            background: #f8fafc;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(21,101,192,0.08);
+        }
+        #historyTable th, #historyTable td {
+            padding: 10px 16px;
+            text-align: center;
+        }
+        #historyTable th {
+            background: #2980b9;
+            color: #fff;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+        #historyTable tr:nth-child(even) {
+            background: #e3f2fd;
+        }
+        #historyTable tr:nth-child(odd) {
+            background: #f8fafc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Connect Four</h1>
+        <div style="margin-bottom: 18px;">
+            <input type="text" id="playerName" placeholder="Enter your name" />
+            <button onclick="startGame()">Start Game</button>
+        </div>
+        <div id="status"></div>
+        <div id="matchup" style="font-size:1.2rem; color:#2980b9; margin-bottom:10px; font-weight:500;"></div>
+        <div id="game"></div>
+        <h2>Game History</h2>
+        <table id="historyTable" border="1">
+            <thead>
+                <tr>
+                    <th>Game #</th>
+                    <th>Player</th>
+                    <th>Winner</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <script>
+        const ROWS = 6;
+        const COLUMNS = 7;
+        let currentTurn = 1;
+        let gameStarted = false;
+
+        function createBoard(board) {
+            const game = document.getElementById("game");
+            game.innerHTML = "";
+            for (let row = ROWS - 1; row >= 0; row--) {
+                for (let col = 0; col < COLUMNS; col++) {
+                    const cell = document.createElement("div");
+                    cell.className = "cell";
+                    cell.onclick = () => makeMove(col);
+
+                    if (Array.isArray(board[row])) {
+                        const disc = document.createElement("div");
+                        disc.classList.add("disc");
+                        if (board[row][col] === 1) disc.classList.add("player");
+                        else if (board[row][col] === 2) disc.classList.add("ai");
+                        cell.appendChild(disc);
+                    }
+
+                    game.appendChild(cell);
+                }
+            }
+        }
+
+        function startGame() {
+            const name = document.getElementById("playerName").value;
+            if (!name) {
+                alert("Please enter your name");
+                return;
+            }
+            fetch("/start_game", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ player_name: name })
+            }).then(res => res.json()).then(data => {
+                if (data.status === "ok") {
+                    gameStarted = true;
+                    document.getElementById("matchup").textContent = name + " vs AI Bot";
+                    fetchBoard();
+                } else if (data.status === "error") {
+                    gameStarted = false;
+                    alert(data.message);
+                }
+            });
+        }
+
+        function fetchBoard() {
+            fetch("/get_board")
+                .then(res => res.json())
+                .then(data => {
+                    const board = data[0];
+                    currentTurn = data[1];
+                    createBoard(board);
+                });
+        }
+
+        function makeMove(col) {
+            if (!gameStarted) {
+                alert("Please start the game by entering your name.");
+                return;
+            }
+            fetch("/move", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ column: col })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === "error") {
+                        alert("Error: " + data.message);
+                        return;
+                    }
+
+                    if (data.status === "win") {
+                        createBoard(data.board);
+                        alert(`Winner: ${data.winner_name}`);
+                        fetchHistory();
+                    } else if (data.status === "draw") {
+                        createBoard(data.board);
+                        alert("It's a draw!");
+                        fetchHistory();
+                    } else {
+                        createBoard(data.board);
+                    }
+                })
+                .catch(err => {
+                    console.error("Make move error:", err);
+                });
+        }
+
+        function fetchHistory() {
+            fetch("/history")
+                .then(res => res.json())
+                .then(history => {
+                    const tbody = document.querySelector("#historyTable tbody");
+                    tbody.innerHTML = "";
+                    history.forEach(row => {
+                        const tr = document.createElement("tr");
+                        tr.innerHTML = `
+                            <td>${row.game_number}</td>
+                            <td>${row.player_name}</td>
+                            <td>${row.winner}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                });
+        }
+
+        // Fetch history on page load
+        window.onload = function() {
+            fetchBoard();
+            fetchHistory();
+        };
+    </script>
+</body>
+</html>
